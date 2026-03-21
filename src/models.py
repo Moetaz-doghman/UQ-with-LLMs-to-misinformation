@@ -10,6 +10,9 @@ from typing import Dict
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
+GEMINI_GENERATE_CONTENT_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+)
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,11 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
         provider="anthropic",
         model_name="claude-3-haiku-20240307",
         api_env_var="ANTHROPIC_API_KEY",
+    ),
+    "gemini-1.5-flash": ModelSpec(
+        provider="google",
+        model_name="gemini-1.5-flash",
+        api_env_var="GOOGLE_API_KEY",
     ),
 }
 
@@ -54,6 +62,8 @@ class ModelClient:
             return self._generate_openai(prompt)
         if self.spec.provider == "anthropic":
             return self._generate_anthropic(prompt)
+        if self.spec.provider == "google":
+            return self._generate_gemini(prompt)
         raise ValueError(f"Unsupported provider: {self.spec.provider}")
 
     def _post_json(self, url: str, headers: Dict[str, str], payload: dict) -> dict:
@@ -116,3 +126,40 @@ class ModelClient:
         if text:
             return text
         raise RuntimeError("Anthropic response did not contain text content.")
+
+    def _generate_gemini(self, prompt: str) -> str:
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt,
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": self.temperature,
+            },
+        }
+        headers = {
+            "x-goog-api-key": self._require_api_key(),
+            "Content-Type": "application/json",
+        }
+        response = self._post_json(
+            GEMINI_GENERATE_CONTENT_URL.format(model=self.spec.model_name),
+            headers,
+            payload,
+        )
+        candidates = response.get("candidates", [])
+        parts = []
+        for candidate in candidates:
+            content = candidate.get("content", {})
+            for part in content.get("parts", []):
+                text = part.get("text", "")
+                if text:
+                    parts.append(text)
+        text = "".join(parts).strip()
+        if text:
+            return text
+        raise RuntimeError("Gemini response did not contain text content.")

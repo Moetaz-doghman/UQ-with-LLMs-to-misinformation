@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Dict
 
 
 def load_dotenv(dotenv_path: Path) -> None:
@@ -17,3 +18,13 @@ def load_dotenv(dotenv_path: Path) -> None:
         value = value.strip().strip('"').strip("'")
         if key and key not in os.environ:
             os.environ[key] = value
+
+
+def inspect_env(dotenv_path: Path) -> Dict[str, object]:
+    return {
+        "dotenv_path": str(dotenv_path),
+        "dotenv_exists": dotenv_path.exists(),
+        "openai_present": bool(os.getenv("OPENAI_API_KEY")),
+        "anthropic_present": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "google_present": bool(os.getenv("GOOGLE_API_KEY")),
+    }

@@ -6,6 +6,7 @@ First baseline for uncertainty quantification via self-verbalized confidence on 
 
 - `gpt-4.1-mini`
 - `claude-3-haiku-20240307`
+- `gemini-1.5-flash`
 
 ## Environment variables
 
@@ -14,6 +15,7 @@ Create a local `.env` file in the project root:
 ```text
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
 ```
 
 You can copy from [.env.example](C:\Users\doghm\Desktop\projet-infox\UQ-with-LLMs-to-misinformation\.env.example). The scripts load `.env` automatically.
@@ -23,6 +25,7 @@ You can copy from [.env.example](C:\Users\doghm\Desktop\projet-infox\UQ-with-LLM
 ```powershell
 python scripts/run_isot_self_verbalization.py --model gpt-4.1-mini --limit 20
 python scripts/run_isot_self_verbalization.py --model claude-3-haiku-20240307 --limit 20
+python scripts/run_isot_self_verbalization.py --model gemini-1.5-flash --limit 20
 python scripts/run_isot_self_verbalization.py --model all --limit 20
 ```
 
