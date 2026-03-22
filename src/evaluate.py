@@ -15,7 +15,7 @@ class ThresholdMetrics:
     selective_accuracy: float | None
     missed_correct_rate: float
 
-
+#count how many times truth == pred and divide by total number of samples 
 def accuracy_score(y_true: Sequence[str], y_pred: Sequence[str]) -> float:
     if not y_true:
         return 0.0

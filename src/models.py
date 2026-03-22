@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -42,12 +43,21 @@ MODEL_SPECS: Dict[str, ModelSpec] = {
 
 
 class ModelClient:
-    def __init__(self, model_id: str, temperature: float, timeout_seconds: int) -> None:
+    def __init__(
+        self,
+        model_id: str,
+        temperature: float,
+        timeout_seconds: int,
+        max_retries: int,
+        retry_backoff_seconds: float,
+    ) -> None:
         if model_id not in MODEL_SPECS:
             raise ValueError(f"Unsupported model: {model_id}")
         self.spec = MODEL_SPECS[model_id]
         self.temperature = temperature
         self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.retry_backoff_seconds = retry_backoff_seconds
 
     def _require_api_key(self) -> str:
         api_key = os.getenv(self.spec.api_env_var)
@@ -69,14 +79,31 @@ class ModelClient:
     def _post_json(self, url: str, headers: Dict[str, str], payload: dict) -> dict:
         body = json.dumps(payload).encode("utf-8")
         request = urllib.request.Request(url=url, data=body, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            error_body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"HTTP {exc.code} from {url}: {error_body}") from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(f"Network error calling {url}: {exc}") from exc
+        attempt = 0
+        while True:
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                error_body = exc.read().decode("utf-8", errors="replace")
+                if exc.code in {408, 409, 429, 500, 502, 503, 504} and attempt < self.max_retries:
+                    self._sleep_before_retry(attempt, f"HTTP {exc.code} from {url}")
+                    attempt += 1
+                    continue
+                raise RuntimeError(f"HTTP {exc.code} from {url}: {error_body}") from exc
+            except (urllib.error.URLError, TimeoutError, ConnectionResetError, OSError) as exc:
+                if attempt < self.max_retries:
+                    self._sleep_before_retry(attempt, f"Network error calling {url}: {exc}")
+                    attempt += 1
+                    continue
+                raise RuntimeError(f"Network error calling {url}: {exc}") from exc
+
+    def _sleep_before_retry(self, attempt: int, reason: str) -> None:
+        delay = self.retry_backoff_seconds * (2 ** attempt)
+        print(
+            f"[retry {attempt + 1}/{self.max_retries}] {reason}. Waiting {delay:.1f}s before retry."
+        )
+        time.sleep(delay)
 
     def _generate_openai(self, prompt: str) -> str:
         payload = {

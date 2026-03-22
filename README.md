@@ -23,10 +23,11 @@ You can copy from [.env.example](C:\Users\doghm\Desktop\projet-infox\UQ-with-LLM
 ## Run inference + evaluation
 
 ```powershell
-python scripts/run_isot_self_verbalization.py --model gpt-4.1-mini --limit 20
-python scripts/run_isot_self_verbalization.py --model claude-3-haiku-20240307 --limit 20
-python scripts/run_isot_self_verbalization.py --model gemini-1.5-flash --limit 20
-python scripts/run_isot_self_verbalization.py --model all --limit 20
+python scripts/run_isot_self_verbalization.py --dataset isot --model gpt-4.1-mini --limit 20
+python scripts/run_isot_self_verbalization.py --dataset isot --model claude-3-haiku-20240307 --limit 20
+python scripts/run_isot_self_verbalization.py --dataset isot --model gemini-1.5-flash --limit 20
+python scripts/run_isot_self_verbalization.py --dataset isot --model all --limit 20
+python scripts/run_isot_self_verbalization.py --dataset info-qc --model gpt-4.1-mini --limit 20
 ```
 
 When `--limit` is used, the script now takes a near-balanced subset from both `True.csv` and `Fake.csv` instead of only the first `N` rows.
@@ -34,7 +35,18 @@ When `--limit` is used, the script now takes a near-balanced subset from both `T
 ## Re-run evaluation on saved predictions
 
 ```powershell
-python scripts/evaluate_isot_self_verbalization.py --predictions outputs/isot_baseline/gpt_4_1_mini/predictions.csv
+python scripts/evaluate_isot_self_verbalization.py --predictions outputs/isot/gpt_4_1_mini/predictions.csv
 ```
 
-Outputs are written under `outputs/isot_baseline/<model_name>/`.
+## Generate visualizations
+
+```powershell
+python scripts/visualize_isot_results.py --input-dir outputs/isot --output outputs/isot/dashboard.html
+python scripts/visualize_isot_results.py --input-dir outputs/info_qc --output outputs/info_qc/dashboard.html
+```
+
+This creates:
+- `outputs/isot/dashboard.html`
+- `outputs/info_qc/dashboard.html`
+
+Outputs are written under `outputs/<dataset_name>/<model_name>/`.

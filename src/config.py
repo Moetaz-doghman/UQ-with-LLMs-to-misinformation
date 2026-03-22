@@ -5,7 +5,8 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT_DIR / "data" / "isot"
+DATA_ROOT_DIR = ROOT_DIR / "data"
+DATA_DIR = DATA_ROOT_DIR / "isot"
 OUTPUT_DIR = ROOT_DIR / "outputs"
 PROMPTS_DIR = ROOT_DIR / "prompts"
 DOTENV_PATH = ROOT_DIR / ".env"
@@ -17,3 +18,5 @@ class ExperimentConfig:
     max_characters: int = 6000
     temperature: float = 0.0
     timeout_seconds: int = 120
+    max_retries: int = 5
+    retry_backoff_seconds: float = 2.0

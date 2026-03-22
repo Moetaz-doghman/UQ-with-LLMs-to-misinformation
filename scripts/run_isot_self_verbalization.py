@@ -8,7 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.config import DATA_DIR, DOTENV_PATH, OUTPUT_DIR, PROMPTS_DIR, ExperimentConfig
+from src.config import DOTENV_PATH, OUTPUT_DIR, PROMPTS_DIR, ExperimentConfig
 from src.env_loader import inspect_env, load_dotenv
 from src.pipeline import evaluate_predictions, run_inference
 
@@ -29,6 +29,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional limit on number of articles for quick runs.",
     )
     parser.add_argument(
+        "--dataset",
+        default="isot",
+        choices=["isot", "info-qc"],
+        help="Dataset to evaluate.",
+    )
+    parser.add_argument(
         "--max-characters",
         type=int,
         default=6000,
@@ -47,6 +53,18 @@ def parse_args() -> argparse.Namespace:
         help="HTTP timeout for model API calls.",
     )
     parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=5,
+        help="Maximum number of automatic retries for transient API/network failures.",
+    )
+    parser.add_argument(
+        "--retry-backoff-seconds",
+        type=float,
+        default=2.0,
+        help="Base backoff in seconds for retries. Actual wait grows exponentially.",
+    )
+    parser.add_argument(
         "--debug-env",
         action="store_true",
         help="Print .env loading diagnostics before running inference.",
@@ -61,9 +79,12 @@ def main() -> None:
         diagnostics = inspect_env(DOTENV_PATH)
         print(diagnostics)
     config = ExperimentConfig(
+        dataset_name=args.dataset,
         max_characters=args.max_characters,
         temperature=args.temperature,
         timeout_seconds=args.timeout_seconds,
+        max_retries=args.max_retries,
+        retry_backoff_seconds=args.retry_backoff_seconds,
     )
     model_ids = (
         ["gpt-4.1-mini", "claude-3-haiku-20240307", "gemini-1.5-flash"]
@@ -72,9 +93,9 @@ def main() -> None:
     )
     for model_id in model_ids:
         model_dir_name = model_id.replace(".", "_").replace("-", "_")
-        run_output_dir = OUTPUT_DIR / "isot_baseline" / model_dir_name
+        dataset_dir_name = args.dataset.replace("-", "_")
+        run_output_dir = OUTPUT_DIR / dataset_dir_name / model_dir_name
         predictions_path = run_inference(
-            data_dir=DATA_DIR,
             output_dir=run_output_dir,
             prompt_path=PROMPTS_DIR / "self_verbalization_isot.txt",
             model_id=model_id,

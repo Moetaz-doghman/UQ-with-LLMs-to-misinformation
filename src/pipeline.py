@@ -6,12 +6,32 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Iterable, List
 
-from .config import ExperimentConfig
-from .data_loader import ArticleRecord, load_isot_dataset, select_balanced_subset
+from .config import DATA_ROOT_DIR, ExperimentConfig
+from .data_loader import ArticleRecord, load_dataset, select_balanced_subset
 from .evaluate import THRESHOLDS, accuracy_score, compute_threshold_metrics, macro_f1_score, roc_auc_score_binary
 from .models import ModelClient
 from .parser import parse_prediction
 from .prompts import build_prompt, load_prompt_template
+
+
+PREDICTION_FIELDNAMES = [
+    "article_id",
+    "source_file",
+    "gold_label",
+    "title",
+    "text",
+    "subject",
+    "date",
+    "pred_label",
+    "confidence",
+    "uncertainty",
+    "justification",
+    "raw_response",
+    "parse_ok",
+    "parse_error",
+    "correct",
+    "error",
+]
 
 
 def _ensure_directory(path: Path) -> None:
@@ -20,12 +40,27 @@ def _ensure_directory(path: Path) -> None:
 
 def _write_predictions_csv(output_path: Path, rows: Iterable[dict]) -> None:
     rows = list(rows)
-    if not rows:
-        return
     with output_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(handle, fieldnames=PREDICTION_FIELDNAMES)
         writer.writeheader()
-        writer.writerows(rows)
+        if rows:
+            writer.writerows(rows)
+
+
+def _append_prediction_row(output_path: Path, row: dict) -> None:
+    file_exists = output_path.exists()
+    with output_path.open("a", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=PREDICTION_FIELDNAMES)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
+
+def _load_existing_prediction_rows(output_path: Path) -> List[dict]:
+    if not output_path.exists():
+        return []
+    with output_path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
 
 
 def _write_threshold_metrics_csv(output_path: Path, rows: Iterable[dict]) -> None:
@@ -43,7 +78,6 @@ def _write_metrics_json(output_path: Path, payload: dict) -> None:
 
 def run_inference(
     *,
-    data_dir: Path,
     output_dir: Path,
     prompt_path: Path,
     model_id: str,
@@ -51,15 +85,37 @@ def run_inference(
     limit: int | None = None,
 ) -> Path:
     _ensure_directory(output_dir)
-    articles = load_isot_dataset(data_dir)
+    articles = load_dataset(config.dataset_name, DATA_ROOT_DIR)
     if limit is not None:
         articles = select_balanced_subset(articles, limit)
+    selected_article_ids = {article.article_id for article in articles}
     template = load_prompt_template(prompt_path)
-    client = ModelClient(model_id=model_id, temperature=config.temperature, timeout_seconds=config.timeout_seconds)
+    client = ModelClient(
+        model_id=model_id,
+        temperature=config.temperature,
+        timeout_seconds=config.timeout_seconds,
+        max_retries=config.max_retries,
+        retry_backoff_seconds=config.retry_backoff_seconds,
+    )
 
-    prediction_rows: List[dict] = []
-    for article in articles:
-        prompt = build_prompt(template, article, config.max_characters)
+    predictions_path = output_dir / "predictions.csv"
+    existing_rows = [
+        row for row in _load_existing_prediction_rows(predictions_path)
+        if row.get("article_id") in selected_article_ids
+    ]
+    if predictions_path.exists():
+        _write_predictions_csv(predictions_path, existing_rows)
+    completed_ids = {row["article_id"] for row in existing_rows}
+    prediction_rows: List[dict] = list(existing_rows)
+
+    if completed_ids:
+        print(f"Resuming run: found {len(completed_ids)} existing predictions in {predictions_path}")
+
+    total_articles = len(articles)
+    for index, article in enumerate(articles, start=1):
+        if article.article_id in completed_ids:
+            continue
+        prompt = build_prompt(template, article, config)
         raw_response = client.generate(prompt)
         parsed = parse_prediction(raw_response)
         correct = (
@@ -69,29 +125,31 @@ def run_inference(
         )
         confidence = parsed.confidence if parsed.confidence is not None else ""
         uncertainty = (1.0 - parsed.confidence) if parsed.confidence is not None else ""
-        prediction_rows.append(
-            {
-                "article_id": article.article_id,
-                "source_file": article.source_file,
-                "gold_label": article.gold_label,
-                "title": article.title,
-                "text": article.text,
-                "subject": article.subject,
-                "date": article.date,
-                "pred_label": parsed.pred_label or "",
-                "confidence": confidence,
-                "uncertainty": uncertainty,
-                "justification": parsed.justification,
-                "raw_response": raw_response,
-                "parse_ok": int(parsed.parse_ok),
-                "parse_error": parsed.parse_error,
-                "correct": correct,
-                "error": 1 - correct,
-            }
+        row = {
+            "article_id": article.article_id,
+            "source_file": article.source_file,
+            "gold_label": article.gold_label,
+            "title": article.title,
+            "text": article.text,
+            "subject": article.subject,
+            "date": article.date,
+            "pred_label": parsed.pred_label or "",
+            "confidence": confidence,
+            "uncertainty": uncertainty,
+            "justification": parsed.justification,
+            "raw_response": raw_response,
+            "parse_ok": int(parsed.parse_ok),
+            "parse_error": parsed.parse_error,
+            "correct": correct,
+            "error": 1 - correct,
+        }
+        prediction_rows.append(row)
+        _append_prediction_row(predictions_path, row)
+        print(
+            f"[{len(prediction_rows)}/{total_articles}] {article.article_id} "
+            f"gold={article.gold_label} pred={row['pred_label'] or 'parse_failed'} "
+            f"conf={row['confidence'] if row['confidence'] != '' else 'n/a'}"
         )
-
-    predictions_path = output_dir / "predictions.csv"
-    _write_predictions_csv(predictions_path, prediction_rows)
     return predictions_path
 
 
