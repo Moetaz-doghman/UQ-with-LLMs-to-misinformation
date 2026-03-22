@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>ISOT Baseline Dashboard</title>
+
+<style>
+  :root {
+    --bg: #f7f3eb;
+    --panel: #fffdf8;
+    --ink: #1f2933;
+    --muted: #5c6773;
+    --line: #d9d9d9;
+    --correct: #2a9d8f;
+    --wrong: #e76f51;
+    --accent: #e9c46a;
+    --chart: #264653;
+  }
+  body { margin: 0; font-family: Georgia, 'Times New Roman', serif; color: var(--ink); background: linear-gradient(180deg, #f7f3eb 0%, #efe6d7 100%); }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+  h1, h2, h3 { margin: 0 0 12px; }
+  .lede { color: var(--muted); max-width: 820px; margin-bottom: 24px; }
+  section { background: var(--panel); border: 1px solid #eadfcd; border-radius: 18px; padding: 20px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(38, 70, 83, 0.06); }
+  .summary-table { width: 100%; border-collapse: collapse; }
+  .summary-table th, .summary-table td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; }
+  .summary-table th { font-size: 0.92rem; color: var(--muted); }
+  .metric-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .card { background: #fff8ea; border: 1px solid #eadfcd; border-radius: 14px; padding: 14px; }
+  .card .label { font-size: 0.84rem; color: var(--muted); margin-bottom: 6px; }
+  .card .value { font-size: 1.5rem; font-weight: 700; }
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; align-items: start; }
+  .chart { background: #fff; border: 1px solid #efe3d1; border-radius: 14px; padding: 14px; }
+  .chart p { color: var(--muted); margin: 6px 0 0; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; color: var(--muted); font-size: 0.9rem; }
+  .legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .legend .correct::before { background: var(--correct); }
+  .legend .wrong::before { background: var(--wrong); }
+  .legend .line::before { background: var(--chart); }
+  .legend .accent::before { background: var(--accent); }
+  .interpretation { margin-top: 14px; color: var(--ink); }
+  .interpretation p { margin: 6px 0; }
+</style>
+
+</head>
+<body>
+<main>
+<h1>ISOT Self-Verbalization Dashboard</h1>
+<p class='lede'>Interpretation view for accuracy, uncertainty quality, and selective prediction tradeoffs.</p>
+<section>
+<h2>Model Summary</h2>
+<table class='summary-table'>
+<thead><tr><th>Model</th><th>Valid / Total</th><th>Accuracy</th><th>Macro-F1</th><th>Uncertainty-Error AUC</th><th>Avg Confidence (Correct)</th><th>Avg Confidence (Wrong)</th></tr></thead>
+<tbody>
+<tr><td>gpt_4_1_mini</td><td>500 / 500</td><td>0.618</td><td>0.553</td><td>0.857</td><td>0.919</td><td>0.858</td></tr>
+</tbody>
+</table>
+</section>
+<section class='model-section'>
+<h2>gpt_4_1_mini</h2>
+<div class='metric-cards'><div class='card'><div class='label'>Valid rows</div><div class='value'>500 / 500</div></div><div class='card'><div class='label'>Accuracy</div><div class='value'>0.618</div></div><div class='card'><div class='label'>Macro-F1</div><div class='value'>0.553</div></div><div class='card'><div class='label'>Uncertainty AUC</div><div class='value'>0.857</div></div><div class='card'><div class='label'>Avg confidence if correct</div><div class='value'>0.919</div></div><div class='card'><div class='label'>Avg confidence if wrong</div><div class='value'>0.858</div></div></div>
+<div class='chart-grid'>
+<div class='chart'><h3>Threshold Tradeoff</h3><svg viewBox='0 0 520 260' role='img' aria-label='threshold tradeoff chart'><rect x='0' y='0' width='520' height='260' fill='white' rx='12'/><line x1='48' y1='16.0' x2='502' y2='16.0' stroke='#d9d9d9' stroke-width='1'/><text x='10' y='20.0' font-size='11' fill='#1f2933'>1.0</text><line x1='48' y1='57.6' x2='502' y2='57.6' stroke='#d9d9d9' stroke-width='1'/><text x='10' y='61.6' font-size='11' fill='#1f2933'>0.8</text><line x1='48' y1='99.2' x2='502' y2='99.2' stroke='#d9d9d9' stroke-width='1'/><text x='10' y='103.2' font-size='11' fill='#1f2933'>0.6</text><line x1='48' y1='140.8' x2='502' y2='140.8' stroke='#d9d9d9' stroke-width='1'/><text x='10' y='144.8' font-size='11' fill='#1f2933'>0.4</text><line x1='48' y1='182.4' x2='502' y2='182.4' stroke='#d9d9d9' stroke-width='1'/><text x='10' y='186.4' font-size='11' fill='#1f2933'>0.2</text><line x1='48' y1='224.0' x2='502' y2='224.0' stroke='#d9d9d9' stroke-width='1'/><text x='10' y='228.0' font-size='11' fill='#1f2933'>0.0</text><line x1='48.0' y1='16' x2='48.0' y2='224' stroke='#d9d9d9' stroke-width='1'/><text x='38.0' y='250' font-size='11' fill='#1f2933'>0.5</text><line x1='161.5' y1='16' x2='161.5' y2='224' stroke='#d9d9d9' stroke-width='1'/><text x='151.5' y='250' font-size='11' fill='#1f2933'>0.6</text><line x1='275.0' y1='16' x2='275.0' y2='224' stroke='#d9d9d9' stroke-width='1'/><text x='265.0' y='250' font-size='11' fill='#1f2933'>0.7</text><line x1='388.5' y1='16' x2='388.5' y2='224' stroke='#d9d9d9' stroke-width='1'/><text x='378.5' y='250' font-size='11' fill='#1f2933'>0.8</text><line x1='502.0' y1='16' x2='502.0' y2='224' stroke='#d9d9d9' stroke-width='1'/><text x='492.0' y='250' font-size='11' fill='#1f2933'>0.9</text><polyline fill='none' stroke='#264653' stroke-width='3' points='48.0,16.0 161.5,16.0 275.0,16.0 388.5,16.4 502.0,105.9'/><polyline fill='none' stroke='#2a9d8f' stroke-width='3' points='48.0,95.5 161.5,95.5 275.0,95.5 388.5,95.6 502.0,41.6'/><polyline fill='none' stroke='#e76f51' stroke-width='3' points='48.0,224.0 161.5,224.0 275.0,224.0 388.5,223.3 502.0,183.6'/><text x='215.0' y='258' font-size='12' fill='#1f2933'>Confidence threshold</text></svg><div class='legend'><span class='line'>Coverage</span><span class='correct'>Selective accuracy</span><span class='wrong'>Missed correct rate</span></div><p>This chart shows what you gain in reliability and what you lose in coverage as the confidence threshold increases.</p></div>
+<div class='chart'><h3>Confidence Distribution</h3><svg viewBox='0 0 520 260' role='img' aria-label='confidence histogram'><rect x='0' y='0' width='520' height='260' fill='white' rx='12'/><line x1='40' y1='16.0' x2='502' y2='16.0' stroke='#d9d9d9' stroke-width='1'/><text x='6' y='20.0' font-size='11' fill='#1f2933'>249</text><line x1='40' y1='57.6' x2='502' y2='57.6' stroke='#d9d9d9' stroke-width='1'/><text x='6' y='61.6' font-size='11' fill='#1f2933'>199</text><line x1='40' y1='99.2' x2='502' y2='99.2' stroke='#d9d9d9' stroke-width='1'/><text x='6' y='103.2' font-size='11' fill='#1f2933'>149</text><line x1='40' y1='140.8' x2='502' y2='140.8' stroke='#d9d9d9' stroke-width='1'/><text x='6' y='144.8' font-size='11' fill='#1f2933'>100</text><line x1='40' y1='182.4' x2='502' y2='182.4' stroke='#d9d9d9' stroke-width='1'/><text x='6' y='186.4' font-size='11' fill='#1f2933'>50</text><line x1='40' y1='224.0' x2='502' y2='224.0' stroke='#d9d9d9' stroke-width='1'/><text x='6' y='228.0' font-size='11' fill='#1f2933'>0</text><rect x='44.6' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='64.9' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='55.7' y='250' font-size='11' fill='#1f2933'>0.0</text><rect x='90.8' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='111.1' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='101.9' y='250' font-size='11' fill='#1f2933'>0.1</text><rect x='137.0' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='157.3' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='148.1' y='250' font-size='11' fill='#1f2933'>0.2</text><rect x='183.2' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='203.5' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='194.3' y='250' font-size='11' fill='#1f2933'>0.3</text><rect x='229.4' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='249.7' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='240.5' y='250' font-size='11' fill='#1f2933'>0.4</text><rect x='275.6' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='295.9' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='286.7' y='250' font-size='11' fill='#1f2933'>0.5</text><rect x='321.8' y='224.0' width='16.6' height='0.0' fill='#2a9d8f' rx='2'/><rect x='342.1' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='332.9' y='250' font-size='11' fill='#1f2933'>0.6</text><rect x='368.0' y='223.2' width='16.6' height='0.8' fill='#2a9d8f' rx='2'/><rect x='388.3' y='224.0' width='16.6' height='0.0' fill='#e76f51' rx='2'/><text x='379.1' y='250' font-size='11' fill='#1f2933'>0.7</text><rect x='414.2' y='174.7' width='16.6' height='49.3' fill='#2a9d8f' rx='2'/><rect x='434.5' y='93.7' width='16.6' height='130.3' fill='#e76f51' rx='2'/><text x='425.3' y='250' font-size='11' fill='#1f2933'>0.8</text><rect x='460.4' y='16.0' width='16.6' height='208.0' fill='#2a9d8f' rx='2'/><rect x='480.7' y='194.8' width='16.6' height='29.2' fill='#e76f51' rx='2'/><text x='471.5' y='250' font-size='11' fill='#1f2933'>0.9</text><text x='210.0' y='258' font-size='12' fill='#1f2933'>Confidence bins</text></svg><div class='legend'><span class='correct'>Correct predictions</span><span class='wrong'>Wrong predictions</span></div><p>If the wrong histogram shifts left and the correct histogram shifts right, the confidence signal is informative.</p></div>
+</div>
+<div class='interpretation'><p>Overall classification accuracy is 0.618.</p><p>The uncertainty signal is strong: wrong predictions are usually more uncertain than correct ones.</p><p>Average confidence on correct predictions is 0.919 versus 0.858 on wrong predictions.</p></div>
+</section>
+</main>
+</body>
+</html>

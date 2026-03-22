@@ -1,0 +1,14 @@
+{
+  "n_total": 500,
+  "n_valid": 500,
+  "accuracy": 0.906,
+  "macro_f1": 0.9056372696645907,
+  "uncertainty_error_roc_auc": 0.7539805551641539,
+  "thresholds": [
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ]
+}
