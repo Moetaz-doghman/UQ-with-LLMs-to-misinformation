@@ -77,6 +77,7 @@ def render_dashboard(data_items: Iterable[ModelVisualizationData]) -> str:
             body.append(f"<h2>{html.escape(item.model_name)}</h2>")
             body.append(_render_metric_cards(item))
             body.append("<div class='chart-grid'>")
+            body.append(_render_roc_chart(item))
             body.append(_render_threshold_chart(item))
             body.append(_render_histogram_chart(item))
             body.append("</div>")
@@ -201,6 +202,27 @@ def _render_threshold_chart(item: ModelVisualizationData) -> str:
     )
 
 
+def _render_roc_chart(item: ModelVisualizationData) -> str:
+    roc_points = _roc_curve_points(item.predictions)
+    auc = item.metrics.get("uncertainty_error_roc_auc")
+    svg = _roc_svg(roc_points)
+    description = (
+        "This is the real ROC curve for error detection using uncertainty. "
+        "The x-axis is the false positive rate and the y-axis is the true positive rate."
+    )
+    return (
+        "<div class='chart'>"
+        "<h3>ROC Curve</h3>"
+        f"{svg}"
+        "<div class='legend'>"
+        "<span class='line'>ROC curve</span>"
+        "<span class='accent'>Random baseline</span>"
+        "</div>"
+        f"<p>{html.escape(description)} AUC = {_fmt(auc)}.</p>"
+        "</div>"
+    )
+
+
 def _render_histogram_chart(item: ModelVisualizationData) -> str:
     correct_conf = _confidence_values(item.predictions, correct=1)
     wrong_conf = _confidence_values(item.predictions, correct=0)
@@ -259,6 +281,38 @@ def _confidence_values(predictions: list[dict], correct: int) -> list[float]:
         if int(row["correct"]) == correct:
             values.append(float(row["confidence"]))
     return values
+
+
+def _roc_curve_points(predictions: list[dict]) -> list[tuple[float, float]]:
+    scored = sorted(
+        ((float(row["uncertainty"]), int(row["error"])) for row in predictions),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    positives = sum(label for _, label in scored)
+    negatives = len(scored) - positives
+    if positives == 0 or negatives == 0:
+        return [(0.0, 0.0), (1.0, 1.0)]
+
+    points: list[tuple[float, float]] = [(0.0, 0.0)]
+    tp = 0
+    fp = 0
+    idx = 0
+    while idx < len(scored):
+        score = scored[idx][0]
+        while idx < len(scored) and scored[idx][0] == score:
+            if scored[idx][1] == 1:
+                tp += 1
+            else:
+                fp += 1
+            idx += 1
+        tpr = tp / positives if positives else 0.0
+        fpr = fp / negatives if negatives else 0.0
+        points.append((fpr, tpr))
+
+    if points[-1] != (1.0, 1.0):
+        points.append((1.0, 1.0))
+    return points
 
 
 def _multi_line_svg(x_values: list[float], series: list[tuple[str, list[float], str]], x_label: str) -> str:
@@ -337,6 +391,43 @@ def _histogram_svg(correct_conf: list[float], wrong_conf: list[float]) -> str:
         parts.append(f"<text x='{x0 + group_width * 0.34:.1f}' y='{height - 10}' font-size='11' fill='{COLORS['text']}'>{idx/10:.1f}</text>")
 
     parts.append(f"<text x='{width / 2 - 50:.1f}' y='{height - 2}' font-size='12' fill='{COLORS['text']}'>Confidence bins</text>")
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _roc_svg(points: list[tuple[float, float]]) -> str:
+    width, height = 520, 260
+    left, top, right, bottom = 40, 16, 18, 36
+    chart_w = width - left - right
+    chart_h = height - top - bottom
+
+    def project_x(value: float) -> float:
+        return left + value * chart_w
+
+    def project_y(value: float) -> float:
+        return top + (1 - value) * chart_h
+
+    parts = [
+        f"<svg viewBox='0 0 {width} {height}' role='img' aria-label='roc curve'>",
+        f"<rect x='0' y='0' width='{width}' height='{height}' fill='white' rx='12'/>",
+    ]
+
+    for step in range(6):
+        value = step / 5
+        x = project_x(value)
+        y = project_y(value)
+        parts.append(f"<line x1='{left}' y1='{y:.1f}' x2='{left + chart_w}' y2='{y:.1f}' stroke='{COLORS['grid']}' stroke-width='1'/>")
+        parts.append(f"<line x1='{x:.1f}' y1='{top}' x2='{x:.1f}' y2='{top + chart_h}' stroke='{COLORS['grid']}' stroke-width='1'/>")
+        parts.append(f"<text x='{x - 8:.1f}' y='{height - 10}' font-size='11' fill='{COLORS['text']}'>{value:.1f}</text>")
+        parts.append(f"<text x='8' y='{y + 4:.1f}' font-size='11' fill='{COLORS['text']}'>{1 - value:.1f}</text>")
+
+    parts.append(
+        f"<line x1='{left}' y1='{top + chart_h}' x2='{left + chart_w}' y2='{top}' stroke='{COLORS['accent']}' stroke-width='2' stroke-dasharray='6 6'/>"
+    )
+    roc_points = " ".join(f"{project_x(x):.1f},{project_y(y):.1f}" for x, y in points)
+    parts.append(f"<polyline fill='none' stroke='{COLORS['line']}' stroke-width='3' points='{roc_points}'/>")
+    parts.append(f"<text x='{width / 2 - 40:.1f}' y='{height - 2}' font-size='12' fill='{COLORS['text']}'>False positive rate</text>")
+    parts.append(f"<text x='12' y='12' font-size='12' fill='{COLORS['text']}'>True positive rate</text>")
     parts.append("</svg>")
     return "".join(parts)
 
